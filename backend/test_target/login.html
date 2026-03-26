@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureAuth Portal — Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #fafafa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 16px;
+            padding: 48px;
+            width: 420px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #10b981, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo p {
+            color: #a1a1aa;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #a1a1aa;
+            margin-bottom: 8px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f0f0f;
+            border: 1px solid #27272a;
+            border-radius: 8px;
+            color: #fafafa;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 8px;
+        }
+        .btn-login:hover { background: #059669; }
+        .error-msg {
+            display: none;
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.3);
+            color: #ef4444;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 16px;
+        }
+        .success-msg {
+            display: none;
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.3);
+            color: #10b981;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 16px;
+        }
+        .dashboard {
+            display: none;
+            text-align: center;
+        }
+        .dashboard h2 {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+        .dashboard p {
+            color: #a1a1aa;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .btn-logout {
+            padding: 10px 28px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-logout:hover { background: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- LOGIN FORM -->
+        <div id="login-view">
+            <div class="logo">
+                <h1>🔐 SecureAuth Portal</h1>
+                <p>AI Tester Agent — Target Application</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn-login" id="login-btn">Sign In</button>
+                <div class="error-msg" id="error-msg">Invalid credentials. Access denied.</div>
+                <div class="success-msg" id="success-msg">Authentication successful. Redirecting...</div>
+            </form>
+        </div>
+
+        <!-- DASHBOARD (after login) -->
+        <div id="dashboard-view" class="dashboard">
+            <div class="logo">
+                <h1>✅ Dashboard</h1>
+                <p>Welcome, <span id="user-display"></span>. Session active.</p>
+            </div>
+            <p>You have successfully authenticated into the SecureAuth Portal.</p>
+            <button class="btn-logout" id="logout-btn">Logout</button>
+            <div class="success-msg" id="logout-msg" style="margin-top:16px;">Session terminated. Redirecting to login...</div>
+        </div>
+    </div>
+
+    <script>
+        const VALID_USER = 'admin';
+        const VALID_PASS = 'password123';
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('success-msg').style.display = 'none';
+
+            if (user === VALID_USER && pass === VALID_PASS) {
+                document.getElementById('success-msg').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('login-view').style.display = 'none';
+                    document.getElementById('dashboard-view').style.display = 'block';
+                    document.getElementById('user-display').textContent = user;
+                }, 1000);
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            document.getElementById('logout-msg').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('dashboard-view').style.display = 'none';
+                document.getElementById('login-view').style.display = 'block';
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('success-msg').style.display = 'none';
+                document.getElementById('logout-msg').style.display = 'none';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
