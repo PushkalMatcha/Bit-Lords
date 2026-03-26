@@ -437,7 +437,7 @@ function App() {
             QA
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-[#fafafa]">QA Team Workspace</span>
+            <span className="text-xs font-medium text-[#fafafa]">Bit Lords</span>
             <span className="text-[10px] text-[#a1a1aa]">Engineering</span>
           </div>
         </div>
