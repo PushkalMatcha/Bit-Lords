@@ -1,6 +1,6 @@
 # 🚀 AI Tester Agent (Bit-Lords)
 
-AI Tester Agent is an end-to-end intelligent testing system that converts user stories into executable test workflows, runs them on a real browser using Playwright, and continuously improves testing through AI-driven failure analysis and regression intelligence.
+AI Tester Agent is an end-to-end intelligent testing system that converts user stories into executable test workflows and continuously improves testing through AI-driven failure analysis and regression intelligence.
 
 ---
 
