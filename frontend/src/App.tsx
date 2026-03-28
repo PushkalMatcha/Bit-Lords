@@ -25,6 +25,7 @@ import {
   Lightbulb,
   Download,
   GitBranch,
+  Plus,
   FileJson,
   FileText
 } from 'lucide-react';
@@ -118,6 +119,7 @@ function App() {
   const [executionMode, setExecutionMode] = useState<'playwright' | 'simulation' | null>(null);
   const [demoMode, setDemoMode] = useState<boolean | null>(null);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const expandedTestRunRef = useRef<HTMLDivElement>(null);
@@ -176,16 +178,20 @@ function App() {
     const getLogType = (msg: string): LogEntry['type'] => {
       if (msg.includes('✓') || msg.includes('successful') || msg.includes('passed') || msg.includes('compiled') || msg.includes('finalized')) return 'success';
       if (msg.includes('✗') || msg.includes('failed') || msg.includes('error') || msg.includes('Error')) return 'error';
-      if (msg.includes('Failure') || msg.includes('Demo Mode') || msg.includes('HIGH') || msg.includes('MEDIUM')) return 'warning';
+      if (msg.includes('Failure') || msg.includes('Demo Mode') || msg.includes('HIGH') || msg.includes('MEDIUM') || msg.includes('Stop')) return 'warning';
       return 'info';
     };
     
+    const controller = new AbortController();
+    setAbortController(controller);
+
     try {
       // Stream SSE events from the backend in real-time
       const res = await fetch('http://localhost:8000/run-test-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_story: story, demo_mode: demoToggle })
+        body: JSON.stringify({ user_story: story, demo_mode: demoToggle }),
+        signal: controller.signal
       });
       
       if (!res.body) throw new Error('No response body');
@@ -282,11 +288,23 @@ function App() {
           }
         }
       }
-    } catch (error) {
-      addLog(`Critical Error reaching backend API: ${error}`, 'error');
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        addLog('Pipeline execution stopped by user.', 'warning');
+      } else {
+        addLog(`Critical Error reaching backend API: ${error}`, 'error');
+      }
     } finally {
+      setAbortController(null);
       setIsRunning(false);
       setLoading(false);
+    }
+  };
+
+  const handleStop = () => {
+    if (abortController) {
+      addLog('Stopping test pipeline...', 'warning');
+      abortController.abort();
     }
   };
 
@@ -333,13 +351,9 @@ function App() {
         addLog(`✓ Successfully imported Jira issue ${data.jira_issue}!`, 'success');
         setJiraInput('');
         setShowJiraDialog(false);
-        await fetchStories();
-        // Auto-run test for the imported story
+        // Only load the story into the input box instead of auto-running
         setStoryInput(data.story);
-        setIsRunning(true);
-        setPipelineVisible(true);
-        setLoading(true);
-        executeLivePipeline(data.story, isDemoMode);
+        await fetchStories();
       } else {
         const error = await response.json();
         addLog(`✗ Jira import failed: ${error.detail}`, 'error');
@@ -720,13 +734,24 @@ function App() {
                     <FileCode2 className="w-4 h-4 text-[#a1a1aa]" />
                     Create Test Run
                   </h2>
-                  <button
-                    onClick={() => setShowJiraDialog(true)}
-                    className="text-xs font-semibold px-3 py-1.5 bg-[#27272a] hover:bg-[#3f3f46] text-[#a1a1aa] rounded-md transition-colors flex items-center gap-2"
-                  >
-                    <GitBranch className="w-3.5 h-3.5" />
-                    Import from Jira
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setStoryInput('')}
+                      className="text-xs font-semibold px-3 py-1.5 border border-[#27272a] hover:bg-[#27272a] text-[#a1a1aa] rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      New Story
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowJiraDialog(true)}
+                      className="text-xs font-semibold px-3 py-1.5 bg-[#27272a] hover:bg-[#3f3f46] text-[#a1a1aa] rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <GitBranch className="w-3.5 h-3.5" />
+                      Import from Jira
+                    </button>
+                  </div>
                 </div>
                 
                 <form onSubmit={handleSubmit}>
@@ -752,14 +777,25 @@ function App() {
                         </div>
                         <span className="text-xs font-semibold uppercase tracking-wider text-[#a1a1aa] group-hover:text-[#fafafa] transition-colors flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Demo Mode</span>
                       </label>
-                      <button
-                        type="submit"
-                        disabled={loading || !storyInput.trim() || isRunning}
-                        className="bg-[#10b981] hover:bg-[#059669] active:bg-[#047857] text-white text-sm font-medium px-5 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:bg-[#27272a] disabled:text-[#a1a1aa] disabled:cursor-not-allowed"
-                      >
-                        {loading || isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-                        {loading || isRunning ? 'Running Pipeline' : 'Start Test Run'}
-                      </button>
+                      {isRunning && (
+                        <button
+                          type="button"
+                          onClick={handleStop}
+                          className="bg-[#ef4444]/10 border border-[#ef4444]/20 hover:bg-[#ef4444]/20 text-[#ef4444] text-sm font-medium px-5 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                        >
+                          <XCircle className="w-4 h-4" /> Stop
+                        </button>
+                      )}
+                      {!isRunning && (
+                        <button
+                          type="submit"
+                          disabled={loading || !storyInput.trim()}
+                          className="bg-[#10b981] hover:bg-[#059669] active:bg-[#047857] text-white text-sm font-medium px-5 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:bg-[#27272a] disabled:text-[#a1a1aa] disabled:cursor-not-allowed"
+                        >
+                          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                          {loading ? 'Running Pipeline' : 'Start Test Run'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </form>
@@ -1188,7 +1224,7 @@ function App() {
                 disabled={jiraLoading}
               />
               <div className="text-xs text-[#a1a1aa] mb-4 bg-[#0f0f0f] border border-[#27272a] rounded p-2">
-                💡 Tip: Enter the Jira issue key (e.g., PROJ-123) and the system will auto-load and test the story.
+                💡 Tip: Enter the Jira issue key (e.g., PROJ-123) and the system will load the story for you to review.
               </div>
               <div className="flex gap-2">
                 <button
@@ -1203,7 +1239,7 @@ function App() {
                   className="flex-1 px-4 py-2 bg-[#10b981] hover:bg-[#059669] text-white rounded-lg text-sm font-medium transition-colors disabled:bg-[#27272a] disabled:text-[#a1a1aa] flex items-center justify-center gap-2"
                 >
                   {jiraLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitBranch className="w-4 h-4" />}
-                  {jiraLoading ? 'Importing...' : 'Import & Test'}
+                  {jiraLoading ? 'Importing...' : 'Import Story'}
                 </button>
               </div>
             </form>
