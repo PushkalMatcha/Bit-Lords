@@ -73,10 +73,40 @@ class JiraClient:
                     return value.get("displayName", "")
                 return ""
 
+            def adf_to_text(node):
+                if not isinstance(node, dict):
+                    if isinstance(node, str):
+                        return node
+                    return ""
+                
+                node_type = node.get("type")
+                
+                if node_type == "text":
+                    return node.get("text", "")
+                elif node_type == "hardBreak":
+                    return "\n"
+                
+                content_text = ""
+                if "content" in node:
+                    for child in node["content"]:
+                        child_text = adf_to_text(child)
+                        if child.get("type") == "listItem":
+                            content_text += f"- {child_text.lstrip()}"
+                        else:
+                            content_text += child_text
+                            
+                    if node_type in ("paragraph", "bulletList", "orderedList"):
+                        content_text += "\n"
+                
+                return content_text
+
+            raw_desc = fields.get('description', '')
+            parsed_desc = adf_to_text(raw_desc).strip() if isinstance(raw_desc, dict) else str(raw_desc)
+
             issue_data = {
                 "key": data.get('key'),
                 "summary": fields.get('summary', ''),
-                "description": fields.get('description', ''),
+                "description": parsed_desc,
                 "issue_type": nested_name(fields.get('issuetype')),
                 "status": nested_name(fields.get('status')),
                 "priority": nested_name(fields.get('priority')),
