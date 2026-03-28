@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from backend.services.ai_generator import generate_tests
@@ -20,7 +20,7 @@ class TestRunRequest(BaseModel):
 
 # ─── Streaming SSE Endpoint (real-time logs + Playwright sync) ───
 @router.post("/run-test-stream")
-async def stream_test_run(request: TestRunRequest):
+async def stream_test_run(request: TestRunRequest, http_request: Request):
     async def event_generator():
         def send_event(event_type: str, data: dict):
             return f"data: {json.dumps({'type': event_type, **data})}\n\n"
@@ -63,6 +63,10 @@ async def stream_test_run(request: TestRunRequest):
 
         # Stream steps as they arrive from the Playwright thread.
         while True:
+            if await http_request.is_disconnected():
+                print("Client disconnected, abandoning test stream.")
+                break
+                
             try:
                 step = step_queue.get(timeout=0.2)
                 if step is None:
