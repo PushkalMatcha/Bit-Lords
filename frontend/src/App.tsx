@@ -308,6 +308,31 @@ function App() {
     }
   };
 
+  const handleNewStory = () => {
+    setStoryInput('');
+    setPipelineVisible(false);
+    setLogs([]);
+    setExecutionResult(null);
+    setShowTestCases(false);
+    setRiskData(null);
+    setFailureDetails(null);
+    setTestCases(MOCK_TEST_CASES);
+    setExecutionMode(null);
+    setDemoMode(null);
+    setPipelineSteps({
+      generation: 'pending',
+      execution: 'pending',
+      detection: 'pending',
+      analysis: 'pending',
+      history: 'pending',
+      score: 'pending',
+      improve: 'pending'
+    });
+    if (abortController) {
+      abortController.abort();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storyInput.trim()) return;
@@ -737,7 +762,7 @@ function App() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => setStoryInput('')}
+                      onClick={handleNewStory}
                       className="text-xs font-semibold px-3 py-1.5 border border-[#27272a] hover:bg-[#27272a] text-[#a1a1aa] rounded-md transition-colors flex items-center gap-2"
                     >
                       <Plus className="w-3.5 h-3.5" />
